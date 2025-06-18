@@ -13,12 +13,19 @@ export function useWebContainer() {
 
     const bootWebContainer = async () => {
       try {
+        // Check if WebContainer is supported
+        if (typeof SharedArrayBuffer === 'undefined') {
+          console.warn('SharedArrayBuffer not available, WebContainer preview disabled');
+          return;
+        }
+
         const instance = await WebContainer.boot();
         if (isMounted) {
           setWebcontainer(instance);
         }
       } catch (error) {
         console.error("Failed to boot WebContainer:", error);
+        // Don't block the UI if WebContainer fails
       }
     };
 
@@ -30,9 +37,14 @@ export function useWebContainer() {
   }, []);
 
   const runProject = async (files: Record<string, string>, artifacts: CodeArtifact[]) => {
-    if (!webcontainer) return;
+    if (!webcontainer) {
+      console.warn('WebContainer not available');
+      setIsLoading(false);
+      return;
+    }
 
     setIsLoading(true);
+    setPreviewUrl(null);
     mountedRef.current = false;
 
     try {
@@ -59,51 +71,70 @@ export function useWebContainer() {
       await webcontainer.mount(fileSystem);
       mountedRef.current = true;
 
-      // Execute shell commands from artifacts
+      // Set up server-ready listener before starting any processes
+      const serverReadyHandler = (port: number, url: string) => {
+        console.log(`Server ready on port ${port}: ${url}`);
+        setPreviewUrl(url);
+        setIsLoading(false);
+      };
+
+      webcontainer.on('server-ready', serverReadyHandler);
+
+      // Execute shell commands from artifacts in sequence
       const shellCommands = artifacts.filter(a => a.type === 'shell' && a.command);
       
       for (const cmd of shellCommands) {
         if (!cmd.command) continue;
         
         try {
-          const process = await webcontainer.spawn('sh', ['-c', cmd.command]);
-          const exitCode = await process.exit;
+          console.log(`Executing: ${cmd.command}`);
           
-          if (exitCode !== 0) {
-            console.warn(`Command failed with exit code ${exitCode}: ${cmd.command}`);
+          if (cmd.command.includes('npm install')) {
+            const installProcess = await webcontainer.spawn('npm', ['install']);
+            const installExit = await installProcess.exit;
+            console.log(`npm install exit code: ${installExit}`);
+          } else if (cmd.command.includes('npm run dev')) {
+            // Start dev server (don't await this as it's long-running)
+            const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
+            
+            // Set a timeout to stop loading if server doesn't start
+            setTimeout(() => {
+              if (isLoading) {
+                console.warn('Dev server timeout');
+                setIsLoading(false);
+              }
+            }, 10000);
+          } else {
+            // Execute other commands
+            const process = await webcontainer.spawn('sh', ['-c', cmd.command]);
+            const exitCode = await process.exit;
+            console.log(`Command "${cmd.command}" exit code: ${exitCode}`);
           }
         } catch (error) {
           console.error(`Failed to execute command: ${cmd.command}`, error);
         }
       }
 
-      // Start the dev server and capture the URL
-      webcontainer.on('server-ready', (port, url) => {
-        setPreviewUrl(url);
-        setIsLoading(false);
-      });
-
-      // Try to start a dev server
-      const hasPackageJson = Object.keys(files).some(path => path.includes('package.json'));
-      
-      if (hasPackageJson) {
-        try {
-          // Install dependencies
-          const installProcess = await webcontainer.spawn('npm', ['install']);
-          await installProcess.exit;
-          
-          // Start dev server
-          const startProcess = await webcontainer.spawn('npm', ['run', 'dev'], {
-            env: { ...process.env, PORT: '3000' }
-          });
-          
-          // Don't wait for this to exit as it's a long-running process
-        } catch (error) {
-          console.error("Failed to start dev server:", error);
+      // If no dev command found, try to start a basic server
+      if (!shellCommands.some(cmd => cmd.command?.includes('npm run dev'))) {
+        const hasPackageJson = Object.keys(files).some(path => path.includes('package.json'));
+        
+        if (hasPackageJson) {
+          try {
+            console.log('Starting fallback dev server');
+            const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
+            setTimeout(() => {
+              if (isLoading) {
+                setIsLoading(false);
+              }
+            }, 8000);
+          } catch (error) {
+            console.error("Failed to start fallback dev server:", error);
+            setIsLoading(false);
+          }
+        } else {
           setIsLoading(false);
         }
-      } else {
-        setIsLoading(false);
       }
 
     } catch (error) {

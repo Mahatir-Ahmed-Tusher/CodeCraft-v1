@@ -45,18 +45,17 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
   if (!url) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="text-center">
+        <div className="text-center max-w-md mx-auto p-6">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
             <ExternalLink className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-semibold mb-2">Live Preview</h3>
           <p className="text-muted-foreground text-sm mb-4">
-            Your generated app will appear here
+            Generate an application to see the live preview here. Your app will run in real-time as you make changes.
           </p>
-          <Button variant="outline" disabled>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            No Preview Available
-          </Button>
+          <div className="text-xs text-muted-foreground">
+            Note: Preview requires SharedArrayBuffer support in your browser
+          </div>
         </div>
       </div>
     );

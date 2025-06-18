@@ -35,14 +35,17 @@ CRITICAL REQUIREMENTS:
 3. Include ALL necessary files for the application to run immediately
 4. Use modern best practices and libraries
 5. Always wrap your response in <boltArtifact> tags
+6. Generate code that works in WebContainer environment (browser-based)
 
 FOR REACT PROJECTS:
 - Use Vite + React + TypeScript + Tailwind CSS
 - Include modern React hooks (useState, useEffect, etc.)
 - Create responsive, beautiful UI with Tailwind
-- Add proper state management
+- Add proper state management with localStorage for persistence
 - Include icons from lucide-react
 - Make it fully interactive and functional
+- Include proper TypeScript types
+- Add error handling and loading states
 
 FOR NODE.JS PROJECTS:
 - Use Express + TypeScript
@@ -50,19 +53,27 @@ FOR NODE.JS PROJECTS:
 - Add CORS support
 - Create RESTful API endpoints
 - Include proper validation
+- Use in-memory storage (no external databases)
 
 PACKAGE.JSON REQUIREMENTS:
 - Include ALL dependencies needed
-- Use "type": "module" for modern ES modules
-- Include proper dev scripts
-- For React: use Vite dev server
-- For Node: use tsx for TypeScript execution
+- Use proper scripts for development
+- For React: use Vite with HMR
+- Include @types packages for TypeScript
+
+ESSENTIAL FILES FOR REACT:
+1. package.json (with all dependencies)
+2. index.html (in root, not public/)
+3. src/main.tsx (entry point)
+4. src/App.tsx (main component)
+5. src/index.css (Tailwind + custom styles)
+6. vite.config.ts (Vite configuration)
 
 SHELL COMMANDS:
-- First: npm install (install dependencies)
-- Last: npm run dev (start development server)
+- First: npm install
+- Last: npm run dev
 
-OUTPUT FORMAT EXAMPLE:
+EXAMPLE OUTPUT:
 <boltArtifact>
 <boltAction type="shell">
 <boltCommand>npm install</boltCommand>
@@ -70,31 +81,44 @@ OUTPUT FORMAT EXAMPLE:
 
 <boltAction type="file" filePath="package.json">
 {
-  "name": "user-requested-app",
-  "version": "1.0.0",
+  "name": "todo-app",
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.263.1"
   },
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^4.4.0"
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.27",
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5"
   }
 }
 </boltAction>
 
-<boltAction type="file" filePath="src/App.tsx">
-[COMPLETE React component with full functionality]
-</boltAction>
+<boltAction type="file" filePath="vite.config.ts">
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-<boltAction type="file" filePath="index.html">
-[Complete HTML file with proper setup]
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000
+  }
+})
 </boltAction>
 
 <boltAction type="shell">
@@ -102,7 +126,7 @@ OUTPUT FORMAT EXAMPLE:
 </boltAction>
 </boltArtifact>
 
-REMEMBER: Generate exactly what the user asks for. If they want a calculator, make a working calculator. If they want a todo app, make a complete todo app with all CRUD operations. NO SHORTCUTS OR PLACEHOLDERS.`;
+REMEMBER: Generate exactly what the user asks for. Make it work immediately in WebContainer with proper file structure and dependencies.`;
 
 const PROMPT_IMPROVEMENT_SYSTEM_PROMPT = `You are a prompt improvement specialist. Take a vague or unclear prompt for web application development and make it more specific and actionable.
 
@@ -156,6 +180,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Messages array is required" });
       }
 
+      // Check if this is a code generation request (contains boltArtifact request)
+      const lastMessage = messages[messages.length - 1];
+      const isCodeGeneration = lastMessage && lastMessage.role === 'user' && 
+        (lastMessage.content.toLowerCase().includes('build') || 
+         lastMessage.content.toLowerCase().includes('create') ||
+         lastMessage.content.toLowerCase().includes('make') ||
+         lastMessage.content.toLowerCase().includes('app'));
+
+      // Use appropriate system prompt
+      const systemPrompt = isCodeGeneration ? CODE_GENERATION_SYSTEM_PROMPT : 
+        `You are CodeCraft AI, a helpful assistant specialized in web development. Provide clear, helpful answers about coding, web development, and building applications. Be conversational and educational.`;
+
       // Convert messages to Groq format
       const groqMessages = messages.map((msg: any) => ({
         role: msg.role === "user" ? "human" : "assistant",
@@ -163,17 +199,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       const response = await groq.invoke([
-        { role: "system", content: CODE_GENERATION_SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         ...groqMessages
       ]);
 
       const responseContent = response.content.toString();
       
-      // Parse the boltArtifact response
-      const artifacts = parseBoltArtifact(responseContent);
-      
-      if (artifacts.length === 0) {
-        return res.status(500).json({ error: "No valid artifacts generated" });
+      // Parse the boltArtifact response if it's a code generation request
+      let artifacts: any[] = [];
+      if (isCodeGeneration) {
+        artifacts = parseBoltArtifact(responseContent);
       }
 
       // Save the message to storage if projectId provided

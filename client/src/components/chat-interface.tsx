@@ -41,8 +41,18 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
 
   const chatMutation = useMutation({
     mutationFn: async (prompt: string) => {
-      // First determine project type if this is the first message
-      if (messages.length === 1) {
+      // Check if this is a code generation request
+      const isCodeGeneration = prompt.toLowerCase().includes('build') || 
+                              prompt.toLowerCase().includes('create') ||
+                              prompt.toLowerCase().includes('make') ||
+                              prompt.toLowerCase().includes('app') ||
+                              prompt.toLowerCase().includes('website') ||
+                              prompt.toLowerCase().includes('tool');
+
+      let projectToUse = currentProject;
+
+      // Create new project for code generation requests
+      if (isCodeGeneration && !currentProject) {
         const templateResponse = await apiRequest("POST", "/api/template", { prompt });
         const templateData = await templateResponse.json();
         
@@ -53,14 +63,14 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
           projectType: templateData.projectType,
           files: {}
         });
-        const project = await projectResponse.json();
-        onProjectChange(project);
+        projectToUse = await projectResponse.json();
+        onProjectChange(projectToUse);
       }
 
       // Send chat message
       const chatResponse = await apiRequest("POST", "/api/chat", {
         messages: [...messages, { role: "user", content: prompt }],
-        projectId: currentProject?.id
+        projectId: projectToUse?.id
       });
       
       return await chatResponse.json();
@@ -75,10 +85,26 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
       setMessages(prev => [...prev, assistantMessage]);
       
       if (data.artifacts && data.artifacts.length > 0) {
+        // Update project with generated files
+        const files: Record<string, string> = {};
+        data.artifacts
+          .filter((artifact: any) => artifact.type === 'file')
+          .forEach((artifact: any) => {
+            if (artifact.path && artifact.content) {
+              files[artifact.path] = artifact.content;
+            }
+          });
+
+        // Update current project with new files
+        if (currentProject && Object.keys(files).length > 0) {
+          apiRequest("PUT", `/api/projects/${currentProject.id}`, { files })
+            .catch(error => console.error("Failed to update project files:", error));
+        }
+
         onCodeGenerated(data.artifacts);
         toast({
           title: "Success",
-          description: "Code generated successfully!",
+          description: `Generated ${Object.keys(files).length} files successfully!`,
         });
       }
       
