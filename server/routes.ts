@@ -483,15 +483,4 @@ function parseBoltArtifact(content: string): CodeArtifact[] {
     console.error('Error parsing boltArtifact:', error);
     return artifacts;
   }
-  const fileRegex = /<boltAction type="file" filePath="([^"]+)">([\s\S]*?)<\/boltAction>/g;
-  let fileMatch;
-  while ((fileMatch = fileRegex.exec(artifactContent)) !== null) {
-    artifacts.push({
-      type: 'file',
-      path: fileMatch[1],
-      content: fileMatch[2].trim()
-    });
-  }
-  
-  return artifacts;
 }

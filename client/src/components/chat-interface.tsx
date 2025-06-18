@@ -49,9 +49,7 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
                               prompt.toLowerCase().includes('website') ||
                               prompt.toLowerCase().includes('tool');
 
-      let projectToUse = currentProject;
-
-      let projectToUse = currentProject;
+      let projectForRequest = currentProject;
 
       // Create new project for code generation requests
       if (isCodeGeneration && !currentProject) {
@@ -65,17 +63,17 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
           projectType: templateData.projectType,
           files: {}
         });
-        projectToUse = await projectResponse.json();
-        onProjectChange(projectToUse);
+        projectForRequest = await projectResponse.json();
+        onProjectChange(projectForRequest);
       }
 
       // Send chat message
       const chatResponse = await apiRequest("POST", "/api/chat", {
         messages: [...messages, { role: "user", content: prompt }],
-        projectId: projectToUse?.id
+        projectId: projectForRequest?.id
       });
       
-      return await chatResponse.json();
+      return { ...await chatResponse.json(), projectUsed: projectForRequest };
     },
     onSuccess: (data) => {
       console.log('Chat response received:', data);
@@ -105,8 +103,8 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
         console.log('Generated files:', Object.keys(files));
 
         // Update current project with new files
-        if (projectToUse && Object.keys(files).length > 0) {
-          apiRequest("PUT", `/api/projects/${projectToUse.id}`, { files })
+        if (data.projectUsed && Object.keys(files).length > 0) {
+          apiRequest("PUT", `/api/projects/${data.projectUsed.id}`, { files })
             .catch(error => console.error("Failed to update project files:", error));
         }
 
