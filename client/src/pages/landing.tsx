@@ -418,11 +418,7 @@ export default function Landing() {
             </div>
           </div>
           
-          <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; 2024 CodeCraft. All rights reserved. Built with AI and love.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
