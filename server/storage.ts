@@ -32,7 +32,9 @@ export class MemStorage implements IStorage {
     const id = this.currentProjectId++;
     const now = new Date();
     const project: Project = { 
-      ...insertProject, 
+      ...insertProject,
+      description: insertProject.description || null,
+      files: insertProject.files || {},
       id, 
       createdAt: now,
       updatedAt: now
@@ -76,6 +78,7 @@ export class MemStorage implements IStorage {
     const id = this.currentMessageId++;
     const message: ChatMessage = {
       ...insertMessage,
+      projectId: insertMessage.projectId!,
       id,
       createdAt: new Date()
     };

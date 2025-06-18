@@ -13,8 +13,8 @@ const execAsync = promisify(exec);
 // Initialize Groq client
 const groq = new ChatGroq({
   temperature: 0.7,
-  groqApiKey: process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "default_key",
-  modelName: "llama-3.3-70b-versatile"
+  apiKey: process.env.GROQ_API_KEY || "default_key",
+  model: "llama-3.3-70b-versatile"
 });
 
 // System prompts
@@ -27,29 +27,74 @@ Rules:
 
 Respond with ONLY the word "react" or "node", nothing else.`;
 
-const CODE_GENERATION_SYSTEM_PROMPT = `You are CodeCraft, an expert code generator that creates production-ready web applications from natural language descriptions.
+const CODE_GENERATION_SYSTEM_PROMPT = `You are CodeCraft, an expert full-stack developer that creates production-ready web applications from natural language descriptions. You must generate COMPLETE, FUNCTIONAL applications that exactly match what the user requests.
 
-IMPORTANT RULES:
-1. Generate complete, functional code with NO placeholders or TODOs
-2. Always wrap your response in <boltArtifact> tags
-3. Include all necessary files for a working application
-4. For React projects: Use TypeScript, Tailwind CSS, modern React hooks
-5. For Node.js projects: Use Express, TypeScript, proper error handling
-6. Include package.json with all required dependencies
-7. Add shell commands to install and run the project
+CRITICAL REQUIREMENTS:
+1. Generate COMPLETE, working code - NO placeholders, TODOs, or "// Add implementation here" comments
+2. Create applications that precisely match the user's request - if they want a todo app, make a full todo app with add/delete/edit functionality
+3. Include ALL necessary files for the application to run immediately
+4. Use modern best practices and libraries
+5. Always wrap your response in <boltArtifact> tags
 
-OUTPUT FORMAT:
+FOR REACT PROJECTS:
+- Use Vite + React + TypeScript + Tailwind CSS
+- Include modern React hooks (useState, useEffect, etc.)
+- Create responsive, beautiful UI with Tailwind
+- Add proper state management
+- Include icons from lucide-react
+- Make it fully interactive and functional
+
+FOR NODE.JS PROJECTS:
+- Use Express + TypeScript
+- Include proper middleware, error handling
+- Add CORS support
+- Create RESTful API endpoints
+- Include proper validation
+
+PACKAGE.JSON REQUIREMENTS:
+- Include ALL dependencies needed
+- Use "type": "module" for modern ES modules
+- Include proper dev scripts
+- For React: use Vite dev server
+- For Node: use tsx for TypeScript execution
+
+SHELL COMMANDS:
+- First: npm install (install dependencies)
+- Last: npm run dev (start development server)
+
+OUTPUT FORMAT EXAMPLE:
 <boltArtifact>
 <boltAction type="shell">
 <boltCommand>npm install</boltCommand>
 </boltAction>
 
-<boltAction type="file" filePath="src/App.tsx">
-[Complete file content here]
+<boltAction type="file" filePath="package.json">
+{
+  "name": "user-requested-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^4.4.0"
+  }
+}
 </boltAction>
 
-<boltAction type="file" filePath="package.json">
-[Complete package.json here]
+<boltAction type="file" filePath="src/App.tsx">
+[COMPLETE React component with full functionality]
+</boltAction>
+
+<boltAction type="file" filePath="index.html">
+[Complete HTML file with proper setup]
 </boltAction>
 
 <boltAction type="shell">
@@ -57,7 +102,7 @@ OUTPUT FORMAT:
 </boltAction>
 </boltArtifact>
 
-Generate a COMPLETE, WORKING application based on the user's specific request. Do not use placeholder content.`;
+REMEMBER: Generate exactly what the user asks for. If they want a calculator, make a working calculator. If they want a todo app, make a complete todo app with all CRUD operations. NO SHORTCUTS OR PLACEHOLDERS.`;
 
 const PROMPT_IMPROVEMENT_SYSTEM_PROMPT = `You are a prompt improvement specialist. Take a vague or unclear prompt for web application development and make it more specific and actionable.
 
@@ -302,27 +347,29 @@ function parseBoltArtifact(content: string): CodeArtifact[] {
   const artifacts: CodeArtifact[] = [];
   
   // Extract content between boltArtifact tags
-  const artifactMatch = content.match(/<boltArtifact>(.*?)<\/boltArtifact>/s);
+  const artifactMatch = content.match(/<boltArtifact>([\s\S]*?)<\/boltArtifact>/);
   if (!artifactMatch) return artifacts;
   
   const artifactContent = artifactMatch[1];
   
   // Extract shell commands
-  const shellMatches = artifactContent.matchAll(/<boltAction type="shell">\s*<boltCommand>(.*?)<\/boltCommand>\s*<\/boltAction>/gs);
-  for (const match of shellMatches) {
+  const shellRegex = /<boltAction type="shell">\s*<boltCommand>([\s\S]*?)<\/boltCommand>\s*<\/boltAction>/g;
+  let shellMatch;
+  while ((shellMatch = shellRegex.exec(artifactContent)) !== null) {
     artifacts.push({
       type: 'shell',
-      command: match[1].trim()
+      command: shellMatch[1].trim()
     });
   }
   
   // Extract files
-  const fileMatches = artifactContent.matchAll(/<boltAction type="file" filePath="([^"]+)">(.*?)<\/boltAction>/gs);
-  for (const match of fileMatches) {
+  const fileRegex = /<boltAction type="file" filePath="([^"]+)">([\s\S]*?)<\/boltAction>/g;
+  let fileMatch;
+  while ((fileMatch = fileRegex.exec(artifactContent)) !== null) {
     artifacts.push({
       type: 'file',
-      path: match[1],
-      content: match[2].trim()
+      path: fileMatch[1],
+      content: fileMatch[2].trim()
     });
   }
   

@@ -75,7 +75,7 @@
 }
 
 .monaco-editor .current-line {
-  @apply bg-muted/20;
+  background-color: hsl(var(--muted) / 0.2);
 }
 
 /* WebContainer iframe styles */
@@ -104,9 +104,10 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full;
+  background-color: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/30;
+  background-color: hsl(var(--muted-foreground) / 0.3);
 }
