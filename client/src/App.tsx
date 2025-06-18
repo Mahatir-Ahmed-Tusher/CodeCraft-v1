@@ -34,11 +34,13 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+      <ThemeProvider defaultTheme="light" storageKey="codecraft-theme">
+        <LanguageProvider>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

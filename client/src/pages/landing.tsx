@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { MobileNav } from "@/components/mobile-nav";
+import { Footer } from "@/components/footer";
 import { 
   Code, 
   Zap, 
@@ -151,16 +152,23 @@ export default function Landing() {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Link href="/generator">
-              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-200">
                 <Rocket className="w-5 h-5 mr-2" />
-                Get Started Free
+                {t('hero.getStarted')}
               </Button>
             </Link>
             
             <Link href="/chat">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+              <Button variant="outline" size="lg" className="w-full sm:w-auto border-2 hover:bg-muted transform hover:scale-105 transition-all duration-200">
                 <MessageSquare className="w-5 h-5 mr-2" />
-                Chat with CodeCraft
+                {t('hero.chat')}
+              </Button>
+            </Link>
+            
+            <Link href="/datagenie">
+              <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200">
+                <Database className="w-5 h-5 mr-2" />
+                {t('hero.tryDataGenie')}
               </Button>
             </Link>
           </div>
@@ -233,6 +241,11 @@ export default function Landing() {
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              {t('features.title')}
+            </h2>
+            <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+              {t('features.subtitle')}
+            </p>
               Everything You Need to Build Amazing Apps
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
