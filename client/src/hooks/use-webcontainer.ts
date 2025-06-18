@@ -38,7 +38,7 @@ export function useWebContainer() {
 
   const runProject = async (files: Record<string, string>, artifacts: CodeArtifact[]) => {
     if (!webcontainer) {
-      console.warn('WebContainer not available');
+      console.warn('WebContainer not available - SharedArrayBuffer may not be supported');
       setIsLoading(false);
       return;
     }
@@ -48,30 +48,84 @@ export function useWebContainer() {
     mountedRef.current = false;
 
     try {
-      // Convert files to WebContainer format
-      const fileSystem: any = {};
-      
-      Object.entries(files).forEach(([path, content]) => {
-        const parts = path.split('/');
-        let current = fileSystem;
-        
-        for (let i = 0; i < parts.length - 1; i++) {
-          if (!current[parts[i]]) {
-            current[parts[i]] = { directory: {} };
+      // Add default package.json if missing (adapted from Builder.tsx logic)
+      if (!files['package.json']) {
+        files['package.json'] = JSON.stringify({
+          name: "generated-app",
+          version: "1.0.0",
+          private: true,
+          type: "module",
+          scripts: {
+            dev: "vite --host 0.0.0.0 --port 3000",
+            build: "vite build",
+            preview: "vite preview"
+          },
+          dependencies: {
+            react: "^18.2.0",
+            "react-dom": "^18.2.0",
+            "lucide-react": "^0.263.1"
+          },
+          devDependencies: {
+            "@types/react": "^18.2.15",
+            "@types/react-dom": "^18.2.7",
+            "@vitejs/plugin-react": "^4.0.3",
+            autoprefixer: "^10.4.14",
+            postcss: "^8.4.27",
+            tailwindcss: "^3.3.3",
+            typescript: "^5.0.2",
+            vite: "^4.4.5"
           }
-          current = current[parts[i]].directory;
-        }
-        
-        current[parts[parts.length - 1]] = {
-          file: { contents: content }
-        };
-      });
+        }, null, 2);
+      }
+
+      // Add default Vite config if missing
+      if (!files['vite.config.ts'] && !files['vite.config.js']) {
+        files['vite.config.ts'] = `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    strictPort: true
+  }
+})`;
+      }
+
+      // Convert files to WebContainer format (adapted from Builder.tsx)
+      const createMountStructure = (fileMap: Record<string, string>) => {
+        const mountStructure: any = {};
+
+        Object.entries(fileMap).forEach(([filePath, content]) => {
+          const parts = filePath.split('/').filter(Boolean);
+          let current = mountStructure;
+          
+          for (let i = 0; i < parts.length - 1; i++) {
+            const dirName = parts[i];
+            if (!current[dirName]) {
+              current[dirName] = { directory: {} };
+            }
+            current = current[dirName].directory;
+          }
+          
+          const fileName = parts[parts.length - 1];
+          current[fileName] = {
+            file: { contents: content }
+          };
+        });
+
+        return mountStructure;
+      };
+
+      const mountStructure = createMountStructure(files);
+      console.log('Mounting WebContainer with structure:', Object.keys(mountStructure));
 
       // Mount the file system
-      await webcontainer.mount(fileSystem);
+      await webcontainer.mount(mountStructure);
       mountedRef.current = true;
 
-      // Set up server-ready listener before starting any processes
+      // Set up server-ready listener
       const serverReadyHandler = (port: number, url: string) => {
         console.log(`Server ready on port ${port}: ${url}`);
         setPreviewUrl(url);
@@ -80,61 +134,41 @@ export function useWebContainer() {
 
       webcontainer.on('server-ready', serverReadyHandler);
 
-      // Execute shell commands from artifacts in sequence
-      const shellCommands = artifacts.filter(a => a.type === 'shell' && a.command);
-      
-      for (const cmd of shellCommands) {
-        if (!cmd.command) continue;
+      // Install dependencies first
+      console.log('Installing dependencies...');
+      try {
+        const installProcess = await webcontainer.spawn('npm', ['install']);
+        const exitCode = await installProcess.exit;
+        console.log(`npm install completed with exit code: ${exitCode}`);
         
-        try {
-          console.log(`Executing: ${cmd.command}`);
-          
-          if (cmd.command.includes('npm install')) {
-            const installProcess = await webcontainer.spawn('npm', ['install']);
-            const installExit = await installProcess.exit;
-            console.log(`npm install exit code: ${installExit}`);
-          } else if (cmd.command.includes('npm run dev')) {
-            // Start dev server (don't await this as it's long-running)
-            const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
-            
-            // Set a timeout to stop loading if server doesn't start
-            setTimeout(() => {
-              if (isLoading) {
-                console.warn('Dev server timeout');
-                setIsLoading(false);
-              }
-            }, 10000);
-          } else {
-            // Execute other commands
-            const process = await webcontainer.spawn('sh', ['-c', cmd.command]);
-            const exitCode = await process.exit;
-            console.log(`Command "${cmd.command}" exit code: ${exitCode}`);
-          }
-        } catch (error) {
-          console.error(`Failed to execute command: ${cmd.command}`, error);
+        if (exitCode !== 0) {
+          throw new Error(`npm install failed with exit code ${exitCode}`);
         }
+      } catch (error) {
+        console.error('Failed to install dependencies:', error);
+        setIsLoading(false);
+        return;
       }
 
-      // If no dev command found, try to start a basic server
-      if (!shellCommands.some(cmd => cmd.command?.includes('npm run dev'))) {
-        const hasPackageJson = Object.keys(files).some(path => path.includes('package.json'));
+      // Start the development server
+      console.log('Starting development server...');
+      try {
+        const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
         
-        if (hasPackageJson) {
-          try {
-            console.log('Starting fallback dev server');
-            const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
-            setTimeout(() => {
-              if (isLoading) {
-                setIsLoading(false);
-              }
-            }, 8000);
-          } catch (error) {
-            console.error("Failed to start fallback dev server:", error);
-            setIsLoading(false);
-          }
-        } else {
+        // Set timeout for server start
+        const timeout = setTimeout(() => {
+          console.warn('Dev server start timeout');
           setIsLoading(false);
-        }
+        }, 15000);
+
+        // Clear timeout if server starts successfully
+        webcontainer.on('server-ready', () => {
+          clearTimeout(timeout);
+        });
+        
+      } catch (error) {
+        console.error('Failed to start dev server:', error);
+        setIsLoading(false);
       }
 
     } catch (error) {

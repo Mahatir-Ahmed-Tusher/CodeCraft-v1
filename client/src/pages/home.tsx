@@ -31,16 +31,28 @@ export default function Home() {
         }
       });
 
+    console.log('Generated files:', Object.keys(newFiles));
     setFiles(newFiles);
     
-    // Set the first file as active
+    // Set the first meaningful file as active (prefer App.tsx or main component)
     const fileKeys = Object.keys(newFiles);
-    if (fileKeys.length > 0) {
-      setActiveFile(fileKeys[0]);
+    let activeFileToSet = fileKeys[0];
+    
+    // Prioritize main component files
+    const priorityFiles = ['src/App.tsx', 'App.tsx', 'src/main.tsx', 'main.tsx', 'index.tsx'];
+    for (const priority of priorityFiles) {
+      if (fileKeys.includes(priority)) {
+        activeFileToSet = priority;
+        break;
+      }
+    }
+    
+    if (activeFileToSet) {
+      setActiveFile(activeFileToSet);
     }
 
-    // Run the project in WebContainer
-    if (webcontainer && Object.keys(newFiles).length > 0) {
+    // Run the project in WebContainer with enhanced file structure
+    if (Object.keys(newFiles).length > 0) {
       await runProject(newFiles, artifacts);
     }
   };

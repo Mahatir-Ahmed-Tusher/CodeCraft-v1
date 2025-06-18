@@ -96,15 +96,15 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
           });
 
         // Update current project with new files
-        if (currentProject && Object.keys(files).length > 0) {
-          apiRequest("PUT", `/api/projects/${currentProject.id}`, { files })
+        if (projectToUse && Object.keys(files).length > 0) {
+          apiRequest("PUT", `/api/projects/${projectToUse.id}`, { files })
             .catch(error => console.error("Failed to update project files:", error));
         }
 
         onCodeGenerated(data.artifacts);
         toast({
-          title: "Success",
-          description: `Generated ${Object.keys(files).length} files successfully!`,
+          title: "Code Generated Successfully!",
+          description: `Created ${Object.keys(files).length} files. Starting live preview...`,
         });
       }
       

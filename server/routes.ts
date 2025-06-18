@@ -62,18 +62,20 @@ PACKAGE.JSON REQUIREMENTS:
 - Include @types packages for TypeScript
 
 ESSENTIAL FILES FOR REACT:
-1. package.json (with all dependencies)
-2. index.html (in root, not public/)
-3. src/main.tsx (entry point)
-4. src/App.tsx (main component)
-5. src/index.css (Tailwind + custom styles)
-6. vite.config.ts (Vite configuration)
+1. package.json (with all dependencies and proper scripts)
+2. index.html (in root directory with proper title and meta tags)
+3. src/main.tsx (React entry point mounting to #root)
+4. src/App.tsx (main component with complete functionality)
+5. src/index.css (Tailwind imports and custom styles)
+6. vite.config.ts (Vite configuration with React plugin)
+7. tailwind.config.js (if using Tailwind)
+8. postcss.config.js (if using Tailwind)
 
 SHELL COMMANDS:
 - First: npm install
 - Last: npm run dev
 
-EXAMPLE OUTPUT:
+EXAMPLE OUTPUT FOR A TODO APP:
 <boltArtifact>
 <boltAction type="shell">
 <boltCommand>npm install</boltCommand>
@@ -86,7 +88,7 @@ EXAMPLE OUTPUT:
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
@@ -108,6 +110,40 @@ EXAMPLE OUTPUT:
 }
 </boltAction>
 
+<boltAction type="file" filePath="index.html">
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+</boltAction>
+
+<boltAction type="file" filePath="src/main.tsx">
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+</boltAction>
+
+<boltAction type="file" filePath="src/index.css">
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+</boltAction>
+
 <boltAction type="file" filePath="vite.config.ts">
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -116,9 +152,23 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000
+    port: 3000,
+    strictPort: true
   }
 })
+</boltAction>
+
+<boltAction type="file" filePath="tailwind.config.js">
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
 </boltAction>
 
 <boltAction type="shell">

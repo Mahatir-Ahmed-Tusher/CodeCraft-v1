@@ -103,16 +103,20 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
           src={url}
           className="w-full h-full border-0 bg-white"
           onLoad={() => setIsFrameLoading(false)}
-          onError={() => setIsFrameLoading(false)}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+          onError={() => {
+            setIsFrameLoading(false);
+            console.error('Preview iframe failed to load');
+          }}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
           title="Application Preview"
+          allow="cross-origin-isolated"
         />
         
         {isFrameLoading && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
             <div className="text-center">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-              <p className="text-sm text-muted-foreground">Loading preview...</p>
+              <p className="text-sm text-muted-foreground">Starting application...</p>
             </div>
           </div>
         )}
