@@ -19,7 +19,9 @@ import {
   Globe,
   Smartphone,
   Database,
-  Layers
+  Layers,
+  BarChart3,
+  TrendingUp
 } from "lucide-react";
 
 export default function Landing() {
@@ -202,7 +204,7 @@ export default function Landing() {
                 <p className="text-sm font-semibold">Natural Language to Dataset</p>
               </div>
               <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
-                <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                <TrendingUp className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                 <p className="text-sm font-semibold">ML Training Suite</p>
               </div>
               <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">

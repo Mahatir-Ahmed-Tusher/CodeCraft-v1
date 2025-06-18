@@ -8,6 +8,7 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Chat from "@/pages/chat";
 import Projects from "@/pages/projects";
+import DataGenie from "./pages/datagenie";
 import NotFound from "@/pages/not-found";
 
 function Router() {
