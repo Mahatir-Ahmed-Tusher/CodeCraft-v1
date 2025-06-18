@@ -4,11 +4,15 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Chat from "@/pages/chat";
 import Projects from "@/pages/projects";
 import DataGenie from "./pages/datagenie";
+import Settings from "./pages/settings";
+import Blog from "./pages/blog";
+import About from "./pages/about";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +23,9 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/projects" component={Projects} />
       <Route path="/datagenie" component={DataGenie} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/about" component={About} />
       <Route component={NotFound} />
     </Switch>
   );

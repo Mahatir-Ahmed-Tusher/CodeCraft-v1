@@ -1,0 +1,28 @@
+About CodeCraft and Mahatir Ahmed Tusher
+About CodeCraft
+CodeCraft is an innovative no-code platform designed to empower users to create web applications effortlessly through natural language prompts. Whether you're a business owner with a vision for a to-do list app or a developer prototyping a complex website, CodeCraft transforms your ideas into functional code with ease. Built with cutting-edge technologies like React, TypeScript, Tailwind CSS, and the Groq API (powered by the llama-3.3-70b-versatile model), CodeCraft delivers production-ready code for React or Node.js projects.
+Key Features
+
+Prompt-Driven Code Generation: Describe your app in simple terms (e.g., "Build a portfolio website with React"), and CodeCraft generates a complete project structure, including files like src/App.tsx and package.json.
+Interactive Code Editing: View and edit generated code in a Monaco Editor with real-time syntax highlighting and ESLint validation.
+Live Previews: See your app come to life instantly using WebContainer, which runs your project in the browser without local setup.
+Project Management: Save, organize, and download your projects as zip files, with metadata stored securely on the server.
+Prompt Refinement: Enhance vague prompts with AI-powered suggestions to ensure precise code output.
+Modern UI: A sleek, responsive interface with dark/light mode, built using Tailwind CSS and React, ensures a seamless user experience.
+
+CodeCraft eliminates the barriers of traditional coding, making app development accessible to everyone. From startups to hobbyists, our mission is to democratize software creation with a platform that’s intuitive, powerful, and scalable. Hosted on a Replit subdomain, CodeCraft is ready to turn your ideas into reality.
+About Mahatir Ahmed Tusher
+Mahatir Ahmed Tusher is the visionary lead developer behind CodeCraft, bringing a wealth of expertise in machine learning, deep learning, and full-stack development to the project. A student at VIT-AP University, Mahatir is a passionate innovator with a knack for solving complex problems through technology. His research, cited by 69 scholars, spans applications like water quality monitoring and handwriting style synthesis using deep learning, showcasing his ability to tackle real-world challenges with AI-driven solutions.
+Background and Expertise
+
+Academic Excellence: Pursuing a degree in Computer Science and Engineering at VIT-AP University, Mahatir has co-authored impactful publications, including "A Harmonic Approach to Handwriting Style Synthesis Using Deep Learning" (June 2024).
+Technical Skills: Proficient in machine learning, deep learning, and natural language processing, Mahatir leverages frameworks like TensorFlow and PyTorch to build intelligent systems. His full-stack development experience includes React, Node.js, and TypeScript, which he applied to create CodeCraft’s robust architecture.
+Open-Source Contributions: With 25 repositories on GitHub, Mahatir actively shares his code and engages with the global developer community.
+Innovative Mindset: Describing himself as a "learner, enthusiast, organizer, and perhaps an author," Mahatir’s curiosity drives him to explore emerging technologies and integrate them into practical solutions like CodeCraft.
+
+Role in CodeCraft
+As the lead developer, Mahatir architected CodeCraft’s seamless integration of the Groq API for code generation, ensuring high-quality, production-ready output. He designed the platform’s backend with Express and TypeScript, incorporating WebContainer for in-browser previews and ESLint for code validation. His expertise in AI enabled the prompt refinement feature, making CodeCraft intuitive for non-technical users. Mahatir’s commitment to user-centric design is evident in the platform’s modern, responsive UI, built with React and Tailwind CSS.
+Vision
+Mahatir envisions CodeCraft as a bridge between ideas and execution, empowering users worldwide to create without coding expertise. His passion for innovation and community-driven development fuels CodeCraft’s ongoing evolution, with plans to introduce advanced AI features and broader framework support.
+
+Join us on this journey at CodeCraft, where Mahatir Ahmed Tusher and our team are redefining how the world builds software—one prompt at a time.

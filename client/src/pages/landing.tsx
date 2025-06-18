@@ -2,6 +2,8 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { MobileNav } from "@/components/mobile-nav";
 import { 
   Code, 
   Zap, 
@@ -25,6 +27,8 @@ import {
 } from "lucide-react";
 
 export default function Landing() {
+  const { t } = useLanguage();
+  
   const features = [
     {
       icon: <MessageSquare className="w-6 h-6" />,
@@ -113,13 +117,18 @@ export default function Landing() {
           </div>
           
           <div className="hidden md:flex items-center space-x-6">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#use-cases" className="text-muted-foreground hover:text-foreground transition-colors">Use Cases</a>
-            <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">{t('nav.features')}</a>
+            <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">{t('nav.blog')}</Link>
+            <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">{t('nav.about')}</Link>
             <Link href="/projects">
-              <Button variant="ghost">My Projects</Button>
+              <Button variant="ghost">{t('nav.projects')}</Button>
+            </Link>
+            <Link href="/settings">
+              <Button variant="ghost">{t('nav.settings')}</Button>
             </Link>
           </div>
+          
+          <MobileNav />
         </div>
       </nav>
 
@@ -130,15 +139,14 @@ export default function Landing() {
             AI-Powered • No-Code • Open Source
           </Badge>
           
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent">
-            Build Web Apps with 
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent animate-pulse">
+            {t('hero.title').split(' ').slice(0, 4).join(' ')}
             <br />
-            Natural Language
+            {t('hero.title').split(' ').slice(4).join(' ')}
           </h1>
           
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Transform your ideas into fully functional web applications using simple conversation. 
-            No coding experience required - just describe what you want to build.
+            {t('hero.subtitle')}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -184,38 +192,36 @@ export default function Landing() {
                 <Database className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Introducing DataGenie
+                {t('datagenie.title')}
               </h2>
             </div>
             
             <p className="text-xl text-gray-600 dark:text-gray-300 mb-4">
-              Your End-to-End AI-Powered Data Science Assistant
+              {t('datagenie.subtitle')}
             </p>
             
             <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
-              From natural language dataset generation to machine learning and NLP - 
-              DataGenie streamlines your entire data science lifecycle with AI-powered automation, 
-              smart preprocessing, visual EDA, and chat-based data insights.
+              {t('datagenie.description')}
             </p>
 
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
                 <Zap className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <p className="text-sm font-semibold">Natural Language to Dataset</p>
+                <p className="text-sm font-semibold">{t('datagenie.feature1')}</p>
               </div>
               <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
                 <TrendingUp className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                <p className="text-sm font-semibold">ML Training Suite</p>
+                <p className="text-sm font-semibold">{t('datagenie.feature2')}</p>
               </div>
               <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
                 <MessageSquare className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <p className="text-sm font-semibold">Chat with Your Data</p>
+                <p className="text-sm font-semibold">{t('datagenie.feature3')}</p>
               </div>
             </div>
 
             <Link href="/datagenie">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3">
-                Try DataGenie
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3 transform hover:scale-105 transition-all duration-200">
+                {t('hero.tryDataGenie')}
               </Button>
             </Link>
           </div>
