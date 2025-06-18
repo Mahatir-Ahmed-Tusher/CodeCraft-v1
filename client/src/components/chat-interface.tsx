@@ -51,6 +51,8 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
 
       let projectToUse = currentProject;
 
+      let projectToUse = currentProject;
+
       // Create new project for code generation requests
       if (isCodeGeneration && !currentProject) {
         const templateResponse = await apiRequest("POST", "/api/template", { prompt });
@@ -76,6 +78,8 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
       return await chatResponse.json();
     },
     onSuccess: (data) => {
+      console.log('Chat response received:', data);
+      
       const assistantMessage: ChatMessageDisplay = {
         role: "assistant",
         content: data.response,
@@ -85,6 +89,8 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
       setMessages(prev => [...prev, assistantMessage]);
       
       if (data.artifacts && data.artifacts.length > 0) {
+        console.log('Processing artifacts:', data.artifacts);
+        
         // Update project with generated files
         const files: Record<string, string> = {};
         data.artifacts
@@ -92,8 +98,11 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
           .forEach((artifact: any) => {
             if (artifact.path && artifact.content) {
               files[artifact.path] = artifact.content;
+              console.log(`Adding file: ${artifact.path}`);
             }
           });
+
+        console.log('Generated files:', Object.keys(files));
 
         // Update current project with new files
         if (projectToUse && Object.keys(files).length > 0) {
@@ -101,22 +110,40 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
             .catch(error => console.error("Failed to update project files:", error));
         }
 
-        onCodeGenerated(data.artifacts);
+        if (Object.keys(files).length > 0) {
+          onCodeGenerated(data.artifacts);
+          toast({
+            title: "Code Generated Successfully!",
+            description: `Created ${Object.keys(files).length} files. Starting live preview...`,
+          });
+        } else {
+          toast({
+            title: "Response Generated",
+            description: "AI responded but no code files were generated.",
+          });
+        }
+      } else {
         toast({
-          title: "Code Generated Successfully!",
-          description: `Created ${Object.keys(files).length} files. Starting live preview...`,
+          title: "Response Generated",
+          description: "AI responded successfully.",
         });
       }
       
       setInput("");
     },
     onError: (error) => {
+      console.error("Chat error details:", error);
+      
+      let errorMessage = "Failed to generate code. Please try again.";
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to generate code. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error("Chat error:", error);
     },
   });
 

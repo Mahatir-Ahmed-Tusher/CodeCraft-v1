@@ -257,8 +257,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Parse the boltArtifact response if it's a code generation request
       let artifacts: any[] = [];
-      if (isCodeGeneration) {
+      if (isCodeGeneration && responseContent.includes('<boltArtifact>')) {
+        console.log('Parsing boltArtifact from response...');
         artifacts = parseBoltArtifact(responseContent);
+        console.log(`Parsed ${artifacts.length} artifacts`);
+      } else if (isCodeGeneration) {
+        console.log('No boltArtifact found in code generation response');
       }
 
       // Save the message to storage if projectId provided
@@ -277,7 +281,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error("Chat error:", error);
-      res.status(500).json({ error: "Code generation failed" });
+      res.status(500).json({ 
+        error: "Code generation failed",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
@@ -431,23 +438,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 function parseBoltArtifact(content: string): CodeArtifact[] {
   const artifacts: CodeArtifact[] = [];
   
-  // Extract content between boltArtifact tags
-  const artifactMatch = content.match(/<boltArtifact>([\s\S]*?)<\/boltArtifact>/);
-  if (!artifactMatch) return artifacts;
-  
-  const artifactContent = artifactMatch[1];
-  
-  // Extract shell commands
-  const shellRegex = /<boltAction type="shell">\s*<boltCommand>([\s\S]*?)<\/boltCommand>\s*<\/boltAction>/g;
-  let shellMatch;
-  while ((shellMatch = shellRegex.exec(artifactContent)) !== null) {
-    artifacts.push({
-      type: 'shell',
-      command: shellMatch[1].trim()
-    });
+  try {
+    // Extract content between boltArtifact tags
+    const artifactMatch = content.match(/<boltArtifact>([\s\S]*?)<\/boltArtifact>/);
+    if (!artifactMatch) {
+      console.log('No boltArtifact found in content');
+      return artifacts;
+    }
+    
+    const artifactContent = artifactMatch[1];
+    console.log('Found boltArtifact content, parsing actions...');
+    
+    // Extract shell commands
+    const shellRegex = /<boltAction type="shell">\s*<boltCommand>([\s\S]*?)<\/boltCommand>\s*<\/boltAction>/g;
+    let shellMatch;
+    while ((shellMatch = shellRegex.exec(artifactContent)) !== null) {
+      artifacts.push({
+        type: 'shell',
+        command: shellMatch[1].trim()
+      });
+    }
+    console.log(`Found ${artifacts.filter(a => a.type === 'shell').length} shell commands`);
+    
+    // Extract files
+    const fileRegex = /<boltAction type="file" filePath="([^"]+)">([\s\S]*?)<\/boltAction>/g;
+    let fileMatch;
+    while ((fileMatch = fileRegex.exec(artifactContent)) !== null) {
+      const filePath = fileMatch[1];
+      const fileContent = fileMatch[2].trim();
+      
+      console.log(`Processing file: ${filePath} (${fileContent.length} chars)`);
+      
+      artifacts.push({
+        type: 'file',
+        path: filePath,
+        content: fileContent
+      });
+    }
+    
+    console.log(`Total artifacts parsed: ${artifacts.length}`);
+    return artifacts;
+    
+  } catch (error) {
+    console.error('Error parsing boltArtifact:', error);
+    return artifacts;
   }
-  
-  // Extract files
   const fileRegex = /<boltAction type="file" filePath="([^"]+)">([\s\S]*?)<\/boltAction>/g;
   let fileMatch;
   while ((fileMatch = fileRegex.exec(artifactContent)) !== null) {
