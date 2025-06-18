@@ -47,7 +47,8 @@ export function ChatInterface({ onCodeGenerated, currentProject, onProjectChange
                               prompt.toLowerCase().includes('make') ||
                               prompt.toLowerCase().includes('app') ||
                               prompt.toLowerCase().includes('website') ||
-                              prompt.toLowerCase().includes('tool');
+                              prompt.toLowerCase().includes('tool') ||
+                              prompt.toLowerCase().includes('generate');
 
       let projectForRequest = currentProject;
 

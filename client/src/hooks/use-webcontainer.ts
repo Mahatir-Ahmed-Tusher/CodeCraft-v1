@@ -15,8 +15,8 @@ export function useWebContainer() {
       try {
         // Check if WebContainer is supported
         if (typeof SharedArrayBuffer === 'undefined') {
-          console.warn('SharedArrayBuffer not available, WebContainer preview disabled');
-          return;
+          console.warn('SharedArrayBuffer not available - preview requires Cross-Origin-Isolation headers');
+          // Still try to initialize for file display
         }
 
         const instance = await WebContainer.boot();

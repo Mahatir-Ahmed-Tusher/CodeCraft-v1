@@ -173,6 +173,53 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* DataGenie Promotion Section */}
+      <section className="py-16 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+                <Database className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Introducing DataGenie
+              </h2>
+            </div>
+            
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-4">
+              Your End-to-End AI-Powered Data Science Assistant
+            </p>
+            
+            <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-3xl mx-auto">
+              From natural language dataset generation to machine learning and NLP - 
+              DataGenie streamlines your entire data science lifecycle with AI-powered automation, 
+              smart preprocessing, visual EDA, and chat-based data insights.
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
+                <Zap className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold">Natural Language to Dataset</p>
+              </div>
+              <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
+                <BarChart3 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold">ML Training Suite</p>
+              </div>
+              <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg p-4">
+                <MessageSquare className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                <p className="text-sm font-semibold">Chat with Your Data</p>
+              </div>
+            </div>
+
+            <Link href="/datagenie">
+              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3">
+                Try DataGenie
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-20 px-4 bg-muted/20">
         <div className="container mx-auto">

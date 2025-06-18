@@ -53,8 +53,11 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
           <p className="text-muted-foreground text-sm mb-4">
             Generate an application to see the live preview here. Your app will run in real-time as you make changes.
           </p>
-          <div className="text-xs text-muted-foreground">
-            Note: Preview requires SharedArrayBuffer support in your browser
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div>Note: Live preview requires Cross-Origin-Isolation headers</div>
+            <div className="text-blue-600 dark:text-blue-400">
+              💡 Generated files are available in the code editor and can be downloaded as a ZIP
+            </div>
           </div>
         </div>
       </div>
