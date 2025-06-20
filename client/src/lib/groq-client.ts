@@ -1,4 +1,4 @@
-// This file contains client-side utilities for working with Groq API responses
+// This file contains client-side utilities for working with OpenRouter API responses. Initialy we used groq, but now we are using OpenRouter for AI interactions.
 // The actual API calls are handled by the backend
 
 export interface GroqMessage {

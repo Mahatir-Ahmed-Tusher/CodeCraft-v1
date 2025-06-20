@@ -9,32 +9,24 @@ export function useWebContainer() {
   const mountedRef = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const bootWebContainer = async () => {
-      try {
-        // Check if WebContainer is supported
-        if (typeof SharedArrayBuffer === 'undefined') {
-          console.warn('SharedArrayBuffer not available - preview requires Cross-Origin-Isolation headers');
-          // Still try to initialize for file display
-        }
-
-        const instance = await WebContainer.boot();
-        if (isMounted) {
-          setWebcontainer(instance);
-        }
-      } catch (error) {
-        console.error("Failed to boot WebContainer:", error);
-        // Don't block the UI if WebContainer fails
+  let isMounted = true;
+  const bootWebContainer = async () => {
+    try {
+      if (typeof SharedArrayBuffer === 'undefined') {
+        console.warn('SharedArrayBuffer not available - preview requires Cross-Origin-Isolation headers');
+        setIsLoading(false);
+        return;
       }
-    };
-
-    bootWebContainer();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      const instance = await WebContainer.boot();
+      if (isMounted) setWebcontainer(instance);
+    } catch (error) {
+      console.error("Failed to boot WebContainer:", error);
+      setIsLoading(false);
+    }
+  };
+  bootWebContainer();
+  return () => { isMounted = false; };
+}, []);
 
   const runProject = async (files: Record<string, string>, artifacts: CodeArtifact[]) => {
     if (!webcontainer) {

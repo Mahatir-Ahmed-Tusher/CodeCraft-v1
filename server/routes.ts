@@ -1,21 +1,23 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertProjectSchema, insertChatMessageSchema, type GeneratedCode, type CodeArtifact } from "@shared/schema";
+import { storage } from "./storage.ts";
+import { insertProjectSchema, insertChatMessageSchema, type GeneratedCode, type CodeArtifact } from "../shared/schema.js";
 import { z } from "zod";
-import { ChatGroq } from "@langchain/groq";
+import fetch from "node-fetch";
 import archiver from "archiver";
 import { promisify } from "util";
 import { exec } from "child_process";
 
 const execAsync = promisify(exec);
 
-// Initialize Groq client
-const groq = new ChatGroq({
-  temperature: 0.7,
-  apiKey: process.env.GROQ_API_KEY || "default_key",
-  model: "llama-3.3-70b-versatile"
-});
+// Validate OPENROUTER_API_KEY
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+if (!OPENROUTER_API_KEY) {
+  console.error("OPENROUTER_API_KEY is not configured in .env");
+  throw new Error("Missing OPENROUTER_API_KEY");
+} else {
+  console.log("OPENROUTER_API_KEY loaded successfully:", OPENROUTER_API_KEY.length + " characters");
+}
 
 // System prompts
 const PROJECT_TYPE_SYSTEM_PROMPT = `You are a project type classifier. Given a user's request for a web application, determine if it should be a "react" frontend project or a "node" backend project.
@@ -36,6 +38,13 @@ CRITICAL REQUIREMENTS:
 4. Use modern best practices and libraries
 5. Always wrap your response in <boltArtifact> tags
 6. Generate code that works in WebContainer environment (browser-based)
+
+CRITICAL VALIDATION:
+- Always include package.json with valid scripts (dev, build, preview) and dependencies
+- Always include index.html with #root div
+- Always include vite.config.ts with React plugin and server config (host: 0.0.0.0, port: 3000)
+- Validate all generated files compile and run in WebContainer
+- Reject requests if code is incomplete or invalid
 
 FOR REACT PROJECTS:
 - Use Vite + React + TypeScript + Tailwind CSS
@@ -89,18 +98,14 @@ Upon user approval, generate the complete code.
 
 EXAMPLE OUTPUT FOR A TODO APP:
 <boltArtifact>
-<boltAction type="shell">
-<boltCommand>npm install</boltCommand>
-</boltAction>
-
-<boltAction type="file" filePath="package.json">
+<file path="package.json">
 {
   "name": "todo-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev": "vite --host 0.0.0.0 --port 5000",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
@@ -120,24 +125,11 @@ EXAMPLE OUTPUT FOR A TODO APP:
     "vite": "^4.4.5"
   }
 }
-</boltAction>
-
-<boltAction type="file" filePath="index.html">
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Todo App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
-</boltAction>
-
-<boltAction type="file" filePath="src/main.tsx">
+</file>
+<shell>
+npm install
+</shell>
+<file path="src/main.tsx">
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -148,15 +140,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
-</boltAction>
-
-<boltAction type="file" filePath="src/index.css">
+</file>
+<file path="src/index.css">
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-</boltAction>
-
-<boltAction type="file" filePath="vite.config.ts">
+</file>
+<file path="vite.config.ts">
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -164,13 +154,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 5000,
     strictPort: true
   }
 })
-</boltAction>
-
-<boltAction type="file" filePath="tailwind.config.js">
+</file>
+<file path="tailwind.config.js">
 export default {
   content: [
     "./index.html",
@@ -181,16 +170,15 @@ export default {
   },
   plugins: [],
 }
-</boltAction>
-
-<boltAction type="shell">
-<boltCommand>npm run dev</boltCommand>
-</boltAction>
+</file>
+<shell>
+npm run dev
+</shell>
 </boltArtifact>
 
 REMEMBER: Generate exactly what the user asks for. Make it work immediately in WebContainer with proper file structure and dependencies.`;
 
-const PROMPT_IMPROVEMENT_SYSTEM_PROMPT = `You are a prompt improvement specialist. Take a vague or unclear prompt for web application development and make it more specific and actionable.
+const PROMPT_IMPROVEMENT_SYSTEM_PROMPT = `You are a prompt improvement specialist named CodeCraft AI. Take a vague or unclear prompt for web application development and make it more specific and actionable.
 
 Transform unclear requests into detailed specifications that include:
 - Specific technologies to use
@@ -201,21 +189,51 @@ Transform unclear requests into detailed specifications that include:
 Return only the improved prompt, nothing else.`;
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
   // Determine project type from prompt
-  app.post("/api/template", async (req, res) => {
+  app.post("/api/template", async (req: Request, res: Response) => {
     try {
       const { prompt } = req.body;
       if (!prompt) {
         return res.status(400).json({ message: "Prompt is required" });
       }
 
-      const response = await groq.invoke([
-        { role: "system", content: PROJECT_TYPE_SYSTEM_PROMPT },
-        { role: "user", content: prompt }
-      ]);
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "http://localhost:5000",
+          "X-Title": "CodeCraft AI",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "deepseek/deepseek-r1-0528:free",
+          "messages": [
+            { "role": "system", "content": PROJECT_TYPE_SYSTEM_PROMPT },
+            { "role": "user", "content": prompt }
+          ]
+        })
+      });
 
-      const projectType = response.content.toString().trim().toLowerCase();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      interface OpenRouterResponse {
+        choices: Array<{
+          message: {
+            content: string;
+          };
+        }>;
+      }
+      
+      const data = await response.json() as OpenRouterResponse;
+      console.log("Raw API response:", JSON.stringify(data, null, 2)); // Debug log
+
+      if (!data.choices || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
+        throw new Error("Invalid API response format");
+      }
+
+      const projectType = data.choices[0].message.content.trim().toLowerCase();
       
       if (projectType !== "react" && projectType !== "node") {
         return res.status(403).json({ message: "Invalid project type" });
@@ -230,19 +248,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Template error:", error);
-      res.status(500).json({ message: "Failed to determine project type" });
+      // Fallback to 'react' if project type determination fails
+      const fallbackPrompt = `Create a react application: ${req.body.prompt || "Default web app"}`;
+      res.status(500).json({
+        message: "Failed to determine project type, defaulting to React",
+        prompts: [fallbackPrompt],
+        uiPrompts: [fallbackPrompt],
+        projectType: "react"
+      });
     }
   });
 
   // Generate code from chat messages
-  app.post("/api/chat", async (req, res) => {
+  app.post("/api/chat", async (req: Request, res: Response) => {
     try {
       const { messages, projectId } = req.body;
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ message: "Messages array is required" });
       }
 
-      // Check if this is a code generation request (contains boltArtifact request)
+      // Check if this is a code generation request
       const lastMessage = messages[messages.length - 1];
       const isCodeGeneration = lastMessage && lastMessage.role === 'user' && 
         (lastMessage.content.toLowerCase().includes('build') || 
@@ -254,24 +279,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const systemPrompt = isCodeGeneration ? CODE_GENERATION_SYSTEM_PROMPT : 
         `You are CodeCraft AI, a helpful assistant specialized in web development. Provide clear, helpful answers about coding, web development, and building applications. Be conversational and educational.`;
 
-      // Convert messages to Groq format
-      const groqMessages = messages.map((msg: any) => ({
-        role: msg.role === "user" ? "human" : "assistant",
-        content: msg.content
-      }));
+      // Convert messages to OpenRouter format
+      const openRouterMessages = [
+        { "role": "system", "content": systemPrompt },
+        ...messages.map((msg: any) => ({
+          role: msg.role === "user" ? "user" : "assistant",
+          content: msg.content
+        }))
+      ];
 
-      const response = await groq.invoke([
-        { role: "system", content: systemPrompt },
-        ...groqMessages
-      ]);
+      // Fetch response as a stream to reduce memory usage
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "http://localhost:5000",
+          "X-Title": "CodeCraft AI",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "deepseek/deepseek-r1-0528:free",
+          "messages": openRouterMessages
+        })
+      });
 
-      const responseContent = response.content.toString();
-      
-      // Parse the boltArtifact response if it's a code generation request
-      let artifacts: any[] = [];
-      if (isCodeGeneration && responseContent.includes('<boltArtifact>')) {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Limit response size to prevent memory exhaustion
+      const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB
+      let responseSize = 0;
+      let responseContent = '';
+
+      // Process response body as a stream (Node.js Readable)
+      const decoder = new TextDecoder();
+      for await (const chunk of response.body as NodeJS.ReadableStream) {
+        const value = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+        responseSize += value.length;
+        if (responseSize > MAX_RESPONSE_SIZE) {
+          throw new Error(`Response size exceeds limit of ${MAX_RESPONSE_SIZE} bytes`);
+        }
+        responseContent += decoder.decode(value, { stream: true });
+      }
+
+      console.log(`Received response of size: ${responseSize} bytes`);
+
+      // Parse JSON response
+      const data = JSON.parse(responseContent) as { choices: { message: { content: string } }[] };
+      const content = data.choices[0].message.content;
+
+      // Parse boltArtifact if it's a code generation request
+      let artifacts: CodeArtifact[] = [];
+      if (isCodeGeneration && content.includes('<boltArtifact>')) {
         console.log('Parsing boltArtifact from response...');
-        artifacts = parseBoltArtifact(responseContent);
+        artifacts = parseBoltArtifact(content);
         console.log(`Parsed ${artifacts.length} artifacts`);
       } else if (isCodeGeneration) {
         console.log('No boltArtifact found in code generation response');
@@ -282,12 +344,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.createChatMessage({
           projectId: parseInt(projectId),
           role: "assistant",
-          content: responseContent
+          content
         });
       }
 
       res.json({ 
-        response: responseContent,
+        response: content,
         artifacts 
       });
       
@@ -301,20 +363,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Improve prompt
-  app.post("/api/improve-prompt", async (req, res) => {
+  app.post("/api/improve-prompt", async (req: Request, res: Response) => {
     try {
       const { prompt } = req.body;
       if (!prompt) {
         return res.status(400).json({ message: "Prompt is required" });
       }
 
-      const response = await groq.invoke([
-        { role: "system", content: PROMPT_IMPROVEMENT_SYSTEM_PROMPT },
-        { role: "user", content: prompt }
-      ]);
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "http://localhost:5000",
+          "X-Title": "CodeCraft AI",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          "model": "deepseek/deepseek-r1-0528:free",
+          "messages": [
+            { "role": "system", "content": PROMPT_IMPROVEMENT_SYSTEM_PROMPT },
+            { "role": "user", "content": prompt }
+          ]
+        })
+      });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const choicesData = data as { choices: { message: { content: string } }[] };
       res.json({ 
-        improvedPrompt: response.content.toString().trim()
+        improvedPrompt: choicesData.choices[0].message.content.trim()
       });
       
     } catch (error) {
@@ -324,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Project management routes
-  app.post("/api/projects", async (req, res) => {
+  app.post("/api/projects", async (req: Request, res: Response) => {
     try {
       const projectData = insertProjectSchema.parse(req.body);
       const project = await storage.createProject(projectData);
@@ -335,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/projects", async (req, res) => {
+  app.get("/api/projects", async (req: Request, res: Response) => {
     try {
       const projects = await storage.getAllProjects();
       res.json(projects);
@@ -345,7 +425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/projects/:id", async (req, res) => {
+  app.get("/api/projects/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const project = await storage.getProject(id);
@@ -359,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/projects/:id", async (req, res) => {
+  app.put("/api/projects/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const updates = req.body;
@@ -374,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/projects/:id", async (req, res) => {
+  app.delete("/api/projects/:id", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteProject(id);
@@ -389,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Download project as zip
-  app.get("/api/projects/:id/download", async (req, res) => {
+  app.get("/api/projects/:id/download", async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const project = await storage.getProject(id);
@@ -403,9 +483,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const archive = archiver('zip', { zlib: { level: 9 } });
       archive.pipe(res);
 
-      // Add files to zip
       Object.entries(project.files || {}).forEach(([filePath, content]) => {
-        archive.append(content, { name: filePath });
+        archive.append(String(content), { name: filePath });
       });
 
       archive.finalize();
@@ -416,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat messages for a project
-  app.get("/api/projects/:id/messages", async (req, res) => {
+  app.get("/api/projects/:id/messages", async (req: Request, res: Response) => {
     try {
       const projectId = parseInt(req.params.id);
       const messages = await storage.getChatMessages(projectId);
@@ -427,7 +506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/projects/:id/messages", async (req, res) => {
+  app.post("/api/projects/:id/messages", async (req: Request, res: Response) => {
     try {
       const projectId = parseInt(req.params.id);
       const messageData = insertChatMessageSchema.parse({
@@ -446,51 +525,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Helper function to parse boltArtifact responses
+// Optimized function to parse boltArtifact responses
 function parseBoltArtifact(content: string): CodeArtifact[] {
   const artifacts: CodeArtifact[] = [];
-  
+  const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB per file
+  const MAX_ARTIFACTS = 100; // Limit total artifacts to prevent excessive memory use
+
   try {
-    // Extract content between boltArtifact tags
-    const artifactMatch = content.match(/<boltArtifact>([\s\S]*?)<\/boltArtifact>/);
-    if (!artifactMatch) {
+    // Find <boltArtifact> content
+    const startTag = '<boltArtifact>';
+    const endTag = '</boltArtifact>';
+    const startIdx = content.indexOf(startTag);
+    const endIdx = content.indexOf(endTag, startIdx);
+    
+    if (startIdx === -1 || endIdx === -1) {
       console.log('No boltArtifact found in content');
       return artifacts;
     }
-    
-    const artifactContent = artifactMatch[1];
-    console.log('Found boltArtifact content, parsing actions...');
-    
-    // Extract shell commands
-    const shellRegex = /<boltAction type="shell">\s*<boltCommand>([\s\S]*?)<\/boltCommand>\s*<\/boltAction>/g;
-    let shellMatch;
-    while ((shellMatch = shellRegex.exec(artifactContent)) !== null) {
-      artifacts.push({
-        type: 'shell',
-        command: shellMatch[1].trim()
-      });
+
+    const artifactContent = content.slice(startIdx + startTag.length, endIdx);
+    console.log(`Found boltArtifact content of size: ${artifactContent.length} chars`);
+
+    let currentIdx = 0;
+    while (currentIdx < artifactContent.length && artifacts.length < MAX_ARTIFACTS) {
+      // Skip whitespace
+      while (currentIdx < artifactContent.length && /\s/.test(artifactContent[currentIdx])) {
+        currentIdx++;
+      }
+
+      if (currentIdx >= artifactContent.length) break;
+
+      // Check for <shell> or <file> tags
+      if (artifactContent.startsWith('<shell>', currentIdx)) {
+        const shellStart = currentIdx + '<shell>'.length;
+        const shellEnd = artifactContent.indexOf('</shell>', shellStart);
+        if (shellEnd === -1) {
+          console.log('Malformed shell tag, skipping');
+          break;
+        }
+
+        const command = artifactContent.slice(shellStart, shellEnd).trim();
+        artifacts.push({
+          type: 'shell',
+          command
+        });
+        console.log(`Parsed shell command of length: ${command.length}`);
+        currentIdx = shellEnd + '</shell>'.length;
+      } else if (artifactContent.startsWith('<file ', currentIdx)) {
+        // Parse file tag
+        const fileTagEnd = artifactContent.indexOf('>', currentIdx);
+        if (fileTagEnd === -1) {
+          console.log('Malformed file tag, skipping');
+          break;
+        }
+
+        // Extract path attribute
+        const fileTag = artifactContent.slice(currentIdx, fileTagEnd);
+        const pathMatch = fileTag.match(/path="([^"]+)"/);
+        if (!pathMatch) {
+          console.log('No path attribute in file tag, skipping');
+          currentIdx = fileTagEnd + 1;
+          continue;
+        }
+
+        const filePath = pathMatch[1];
+        const contentStart = fileTagEnd + 1;
+        const contentEnd = artifactContent.indexOf('</file>', contentStart);
+        if (contentEnd === -1) {
+          console.log(`Malformed file tag for path ${filePath}, skipping`);
+          break;
+        }
+
+        const fileContent = artifactContent.slice(contentStart, contentEnd);
+        if (fileContent.length > MAX_FILE_SIZE) {
+          console.log(`File ${filePath} exceeds size limit of ${MAX_FILE_SIZE} bytes, skipping`);
+          currentIdx = contentEnd + '</file>'.length;
+          continue;
+        }
+
+        artifacts.push({
+          type: 'file',
+          path: filePath,
+          content: fileContent
+        });
+        console.log(`Parsed file: ${filePath} (${fileContent.length} chars)`);
+        currentIdx = contentEnd + '</file>'.length;
+      } else {
+        // Skip unknown content
+        currentIdx++;
+      }
     }
-    console.log(`Found ${artifacts.filter(a => a.type === 'shell').length} shell commands`);
-    
-    // Extract files
-    const fileRegex = /<boltAction type="file" filePath="([^"]+)">([\s\S]*?)<\/boltAction>/g;
-    let fileMatch;
-    while ((fileMatch = fileRegex.exec(artifactContent)) !== null) {
-      const filePath = fileMatch[1];
-      const fileContent = fileMatch[2].trim();
-      
-      console.log(`Processing file: ${filePath} (${fileContent.length} chars)`);
-      
-      artifacts.push({
-        type: 'file',
-        path: filePath,
-        content: fileContent
-      });
-    }
-    
+
     console.log(`Total artifacts parsed: ${artifacts.length}`);
+    if (artifacts.length >= MAX_ARTIFACTS) {
+      console.warn(`Reached artifact limit of ${MAX_ARTIFACTS}, some artifacts may be ignored`);
+    }
+
     return artifacts;
-    
   } catch (error) {
     console.error('Error parsing boltArtifact:', error);
     return artifacts;

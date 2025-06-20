@@ -149,22 +149,40 @@ export function EnhancedWebContainer({ files, onPreviewReady, onError }: Enhance
       updateStep('serve', { status: 'running' });
       addLog('Starting development server...');
       
-      const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
-      
-      // Listen for server ready
-      webcontainer.on('server-ready', (port, url) => {
-        addLog(`Development server started on port ${port}`);
-        setPreviewUrl(url);
-        onPreviewReady?.(url);
-        updateStep('serve', { status: 'completed' });
-        setBuildProgress(100);
-        setIsBuilding(false);
-      });
+     const devProcess = await webcontainer.spawn('npm', ['run', 'dev']);
+devProcess.output.pipeTo(new WritableStream({
+  write(data) {
+    let output: string;
+    if (typeof data === 'string') {
+      // Convert string to Uint8Array for TextDecoder
+      output = new TextDecoder().decode(new TextEncoder().encode(data));
+    } else {
+      output = new TextDecoder().decode(data);
+    }
+    addLog(output.trim());
+    if (output.includes('Local: http://localhost:3000')) {
+      setPreviewUrl(`http://localhost:3000`);
+      onPreviewReady?.(`http://localhost:3000`);
+      updateStep('serve', { status: 'completed' });
+      setBuildProgress(100);
+      setIsBuilding(false);
+    } else if (output.includes('Error:')) {
+      addLog(`Server error detected: ${output}`);
+      setIsBuilding(false);
+    }
+  }
+}));
 
       // Listen for errors
       devProcess.output.pipeTo(new WritableStream({
         write(data) {
-          const output = new TextDecoder().decode(data);
+          let output: string;
+          if (typeof data === 'string') {
+            // Convert string to Uint8Array for TextDecoder
+            output = new TextDecoder().decode(new TextEncoder().encode(data));
+          } else {
+            output = new TextDecoder().decode(data);
+          }
           addLog(output.trim());
           
           // Check for common error patterns

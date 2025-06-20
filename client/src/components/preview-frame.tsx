@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ExternalLink, AlertCircle } from "lucide-react";
 
@@ -10,6 +10,7 @@ interface PreviewFrameProps {
 export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
   const [key, setKey] = useState(0);
   const [isFrameLoading, setIsFrameLoading] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const refresh = () => {
     setKey(prev => prev + 1);
@@ -25,8 +26,23 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
   useEffect(() => {
     if (url) {
       setIsFrameLoading(true);
+      const timer = setTimeout(() => {
+        if (isFrameLoading && iframeRef.current) {
+          console.warn('Iframe load timeout');
+          setIsFrameLoading(false);
+        }
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [url]);
+
+  useEffect(() => {
+    if (iframeRef.current && !isFrameLoading) {
+      console.log('Iframe loaded successfully');
+    } else if (iframeRef.current && isFrameLoading) {
+      console.error('Iframe failed to load within timeout');
+    }
+  }, [isFrameLoading]);
 
   if (isLoading) {
     return (
@@ -66,7 +82,6 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Preview Header */}
       <div className="flex items-center justify-between p-3 border-b bg-card">
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-1">
@@ -76,10 +91,9 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
             </span>
           </div>
           <div className="text-xs text-muted-foreground truncate max-w-xs">
-            {url}
+            {url || 'No URL available'}
           </div>
         </div>
-        
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -98,23 +112,21 @@ export function PreviewFrame({ url, isLoading }: PreviewFrameProps) {
           </Button>
         </div>
       </div>
-
-      {/* Preview Frame */}
       <div className="flex-1 relative">
         <iframe
+          ref={iframeRef}
           key={key}
           src={url}
           className="w-full h-full border-0 bg-white"
           onLoad={() => setIsFrameLoading(false)}
           onError={() => {
             setIsFrameLoading(false);
-            console.error('Preview iframe failed to load');
+            console.error('Preview iframe failed to load', url);
           }}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
           title="Application Preview"
           allow="cross-origin-isolated"
         />
-        
         {isFrameLoading && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
             <div className="text-center">

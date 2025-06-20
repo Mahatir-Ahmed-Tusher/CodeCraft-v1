@@ -1,19 +1,19 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { 
-  Send, 
-  Wand2, 
-  Bot, 
-  User, 
-  Loader2, 
-  ArrowLeft, 
-  Code, 
+import { Button } from "@/components/ui/button.js";
+import { Textarea } from "@/components/ui/textarea.js";
+import { Card } from "@/components/ui/card.js";
+import { useToast } from "@/hooks/use-toast.js";
+import { apiRequest } from "@/lib/queryClient.js";
+import {
+  Send,
+  Wand2,
+  Bot,
+  User,
+  Loader2,
+  ArrowLeft,
+  Code,
   Lightbulb,
   HelpCircle,
   Sparkles
@@ -82,14 +82,16 @@ export default function Chat() {
         role: "assistant",
         content: data.response || "I'm sorry, I couldn't generate a response. Please try again."
       };
-      
+
       setMessages(prev => [...prev, assistantMessage]);
       setInput("");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: "Failed to get response. Please try again.",
+        description: error.message.includes("invalid_api_key")
+          ? "Server configuration error. Please contact support."
+          : "Failed to get response. Please try again.",
         variant: "destructive",
       });
       console.error("Chat error:", error);
@@ -119,12 +121,12 @@ export default function Chat() {
 
   const handleSend = () => {
     if (!input.trim() || chatMutation.isPending) return;
-    
+
     const userMessage: ChatMessage = {
       role: "user",
       content: input
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     chatMutation.mutate(input);
   };
@@ -165,7 +167,7 @@ export default function Chat() {
               <p className="text-sm text-muted-foreground">Get help with web development</p>
             </div>
           </div>
-          
+
           <Link href="/generator">
             <Button>
               <Code className="w-4 h-4 mr-2" />
@@ -236,7 +238,7 @@ export default function Chat() {
                         <Bot className="w-4 h-4 text-white" />
                       </div>
                     )}
-                    
+
                     <div
                       className={`rounded-lg p-4 max-w-md ${
                         message.role === "user"
@@ -254,7 +256,7 @@ export default function Chat() {
                     )}
                   </div>
                 ))}
-                
+
                 {chatMutation.isPending && (
                   <div className="flex items-start space-x-3">
                     <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -268,7 +270,7 @@ export default function Chat() {
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
 
@@ -286,7 +288,7 @@ export default function Chat() {
                     />
                   </div>
                   <div className="flex flex-col space-y-2">
-                    <Button 
+                    <Button
                       onClick={handleSend}
                       disabled={!input.trim() || chatMutation.isPending}
                       size="sm"
@@ -298,7 +300,7 @@ export default function Chat() {
                         <Send className="w-4 h-4" />
                       )}
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleImprove}
                       disabled={!input.trim() || improveMutation.isPending}
                       variant="secondary"
